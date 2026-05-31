@@ -8,8 +8,12 @@ public partial class BarScript : AnimatableBody3D
 
 	private const float DemiLargeurBase = 0.5f;
 	private const float BordInterieur = 1.9f;
+	private const float ToleranceIA = 0.04f;
 
 	public float DemiLargeur { get; private set; } = DemiLargeurBase;
+	public double TempsRedimensionnementRestant => Math.Max(0.0, _tempsRedimRestant);
+	public float FacteurRedimensionnement { get; private set; } = 1.0f;
+	public int SensAttaque { get; private set; } = 1;
 
 	private float LimiteX => BordInterieur - DemiLargeur;
 
@@ -24,6 +28,8 @@ public partial class BarScript : AnimatableBody3D
 	private Vector3 _tailleCollisionBase = new Vector3(1.0f, 0.2f, 0.2f);
 	private double _tempsRedimRestant;
 	private bool _controleSourisActif;
+	private bool _controleIA;
+	private float? _cibleIA;
 
 	public override void _Ready()
 	{
@@ -34,6 +40,22 @@ public partial class BarScript : AnimatableBody3D
 		_corpsBox = _corpsMesh?.Mesh as BoxMesh;
 		_faceQuad = _faceAvant?.Mesh as QuadMesh;
 		_collisionBox = _collision?.Shape as BoxShape3D;
+
+		if (_corpsBox != null)
+		{
+			_corpsBox = (BoxMesh)_corpsBox.Duplicate();
+			_corpsMesh.Mesh = _corpsBox;
+		}
+		if (_faceQuad != null)
+		{
+			_faceQuad = (QuadMesh)_faceQuad.Duplicate();
+			_faceAvant.Mesh = _faceQuad;
+		}
+		if (_collisionBox != null)
+		{
+			_collisionBox = (BoxShape3D)_collisionBox.Duplicate();
+			_collision.Shape = _collisionBox;
+		}
 
 		if (_corpsBox != null)
 			_tailleCorpsBase = _corpsBox.Size;
@@ -47,6 +69,9 @@ public partial class BarScript : AnimatableBody3D
 
 	public override void _Input(InputEvent ev)
 	{
+		if (_controleIA)
+			return;
+
 		if (ev is InputEventMouseMotion || ev is InputEventMouseButton)
 			_controleSourisActif = true;
 	}
@@ -60,20 +85,32 @@ public partial class BarScript : AnimatableBody3D
 				AppliquerFacteur(1.0f);
 		}
 
-		float direction = Input.GetAxis("ui_left", "ui_right");
+		float direction = _controleIA ? DirectionIA() : Input.GetAxis("ui_left", "ui_right");
 		Vector3 position = Position;
 		if (!Mathf.IsZeroApprox(direction))
 		{
 			_controleSourisActif = false;
 			position.X += direction * Vitesse * (float)delta;
 		}
-		else if (_controleSourisActif && EssayerLireXSouris(out float sourisX))
+		else if (!_controleIA && _controleSourisActif && EssayerLireXSouris(out float sourisX))
 		{
 			position.X = sourisX;
 		}
 
 		position.X = Mathf.Clamp(position.X, -LimiteX, LimiteX);
 		Position = position;
+	}
+
+	public void Configurer(bool controleIA, int sensAttaque)
+	{
+		_controleIA = controleIA;
+		SensAttaque = sensAttaque >= 0 ? 1 : -1;
+		_controleSourisActif = false;
+	}
+
+	public void DefinirCibleIA(float? x)
+	{
+		_cibleIA = x;
 	}
 
 	public void Redimensionner(float facteur, double duree)
@@ -97,10 +134,24 @@ public partial class BarScript : AnimatableBody3D
 			_collisionBox.Size = new Vector3(_tailleCollisionBase.X * facteur, _tailleCollisionBase.Y, _tailleCollisionBase.Z);
 
 		DemiLargeur = DemiLargeurBase * facteur;
+		FacteurRedimensionnement = facteur;
 
 		Vector3 position = Position;
 		position.X = Mathf.Clamp(position.X, -LimiteX, LimiteX);
 		Position = position;
+	}
+
+	private float DirectionIA()
+	{
+		if (!_cibleIA.HasValue)
+			return 0.0f;
+
+		float cible = Mathf.Clamp(_cibleIA.Value, -LimiteX, LimiteX);
+		float ecart = cible - Position.X;
+		if (Mathf.Abs(ecart) <= ToleranceIA)
+			return 0.0f;
+
+		return Mathf.Sign(ecart);
 	}
 
 	private bool EssayerLireXSouris(out float x)

@@ -23,14 +23,17 @@ public partial class CapsuleScript : Area3D
 	[Export]
 	public float Vitesse = 2.0f;
 
+	[Export]
+	public int SensVertical = -1;
+
 	public TypeBonus Type { get; private set; }
 
 	public override void _PhysicsProcess(double delta)
 	{
-		Position += Vector3.Down * Vitesse * (float)delta;
+		Position += Vector3.Up * SensVertical * Vitesse * (float)delta;
 
 		// Disparaît si elle sort par le bas sans être attrapée.
-		if (Position.Y < -1.5f)
+		if (Position.Y < -1.5f || Position.Y > 10.5f)
 			QueueFree();
 	}
 

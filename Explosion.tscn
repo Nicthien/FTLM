@@ -1,19 +1,31 @@
-[gd_scene format=3 uid="uid://bxgslhv4m3bek"]
+[gd_scene load_steps=3 format=3 uid="uid://bxgslhv4m3bek"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_expl"]
+shading_mode = 0
+albedo_color = Color(1, 0.55, 0.18, 1)
+emission_enabled = true
+emission = Color(1, 0.35, 0.08, 1)
+emission_energy_multiplier = 1.6
 
 [sub_resource type="BoxMesh" id="BoxMesh_expl"]
-size = Vector3(0.06, 0.06, 0.06)
+material = SubResource("StandardMaterial3D_expl")
+size = Vector3(0.045, 0.045, 0.045)
 
 [node name="Explosion" type="CPUParticles3D"]
 emitting = false
-amount = 16
-lifetime = 0.5
+amount = 28
+lifetime = 0.65
 one_shot = true
 explosiveness = 1.0
 mesh = SubResource("BoxMesh_expl")
 direction = Vector3(0, 0, 0)
 spread = 180.0
-gravity = Vector3(0, -3, 0)
-initial_velocity_min = 1.5
-initial_velocity_max = 3.0
-scale_amount_min = 0.6
-scale_amount_max = 1.2
+gravity = Vector3(0, -2.4, 0)
+initial_velocity_min = 1.7
+initial_velocity_max = 3.7
+angular_velocity_min = -240.0
+angular_velocity_max = 240.0
+damping_min = 1.0
+damping_max = 2.2
+scale_amount_min = 0.55
+scale_amount_max = 1.35
