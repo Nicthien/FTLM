@@ -1,0 +1,22 @@
+[gd_scene format=3 uid="uid://dav4iw38m4vo5"]
+
+[ext_resource type="PhysicsMaterial" uid="uid://cxkhx8cn2pmba" path="res://Physics_Material/Mur.tres" id="1_brique"]
+[ext_resource type="Script" uid="uid://cbr1quescript42" path="res://Scripts/BriqueScript.cs" id="2_brique"]
+[ext_resource type="Texture2D" path="res://Textures/brique_futuriste.png" id="3_briquetex"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_brique"]
+size = Vector3(0.55, 0.22, 0.2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_brique"]
+size = Vector3(0.55, 0.22, 0.2)
+
+[node name="Brique" type="StaticBody3D" groups=["briques"]]
+physics_material_override = ExtResource("1_brique")
+script = ExtResource("2_brique")
+TextureBrique = ExtResource("3_briquetex")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_brique")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("BoxShape3D_brique")

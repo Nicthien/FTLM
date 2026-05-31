@@ -1,0 +1,214 @@
+[gd_scene load_steps=28 format=3 uid="uid://dpocflmct2nue"]
+
+[ext_resource type="PhysicsMaterial" uid="uid://cxkhx8cn2pmba" path="res://Physics_Material/Mur.tres" id="1_a202f"]
+[ext_resource type="Script" uid="uid://b6iosqkwqr3dy" path="res://Scripts/BalleScript.cs" id="2_noarx"]
+[ext_resource type="Script" uid="uid://bqr3kbarscript8" path="res://Scripts/BarScript.cs" id="3_barsc"]
+[ext_resource type="Script" uid="uid://dgamemanager777" path="res://Scripts/GameManager.cs" id="4_gm"]
+[ext_resource type="PackedScene" uid="uid://dav4iw38m4vo5" path="res://Brique.tscn" id="5_brq"]
+[ext_resource type="Texture2D" path="res://Textures/bar_futuriste_clean.png" id="6_bartex"]
+[ext_resource type="Texture2D" path="res://Textures/mur_futuriste.png" id="7_murtex"]
+[ext_resource type="Texture2D" path="res://Textures/fond_futuriste.png" id="8_fondtex"]
+[ext_resource type="PackedScene" path="res://PauseMenu.tscn" id="9_pause"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_4xowi"]
+size = Vector3(1, 0.2, 0.2)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_bar_metal"]
+albedo_color = Color(0.025, 0.03, 0.04, 1)
+metallic = 0.85
+roughness = 0.22
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_bar_futuriste"]
+shading_mode = 0
+albedo_texture = ExtResource("6_bartex")
+metallic = 0.85
+roughness = 0.18
+cull_mode = 2
+emission_enabled = true
+emission = Color(0.0, 0.65, 0.9, 1)
+emission_energy_multiplier = 0.25
+
+[sub_resource type="QuadMesh" id="QuadMesh_bar_futuriste"]
+size = Vector2(1, 0.2)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_mur_futuriste"]
+albedo_texture = ExtResource("7_murtex")
+metallic = 0.55
+roughness = 0.28
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_fond_futuriste"]
+shading_mode = 0
+albedo_texture = ExtResource("8_fondtex")
+cull_mode = 2
+
+[sub_resource type="QuadMesh" id="QuadMesh_fond_futuriste"]
+size = Vector2(4.35, 5.55)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_4xowi"]
+size = Vector3(1, 0.2, 0.2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_a202f"]
+size = Vector3(0.2, 5, 0.2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_noarx"]
+size = Vector3(0.2, 5, 0.2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_a0tk4"]
+size = Vector3(0.2, 5, 0.2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_a202f"]
+size = Vector3(0.2, 5, 0.2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_r3fl7"]
+size = Vector3(4.2, 0.2, 0.2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_jka67"]
+size = Vector3(4.2, 0.2, 0.2)
+
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_4xowi"]
+friction = 0.0
+bounce = 1.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_noarx"]
+albedo_color = Color(0.49040055, 0.9935898, 0.8467183, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_4xowi"]
+material = SubResource("StandardMaterial3D_noarx")
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_a202f"]
+
+[node name="Node3D" type="Node3D"]
+script = ExtResource("4_gm")
+
+[node name="Fond" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.3, -0.13)
+mesh = SubResource("QuadMesh_fond_futuriste")
+material_override = SubResource("StandardMaterial3D_fond_futuriste")
+
+[node name="Bar" type="AnimatableBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+script = ExtResource("3_barsc")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Bar"]
+mesh = SubResource("BoxMesh_4xowi")
+material_override = SubResource("StandardMaterial3D_bar_metal")
+
+[node name="TextureFaceAvant" type="MeshInstance3D" parent="Bar"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.102)
+mesh = SubResource("QuadMesh_bar_futuriste")
+material_override = SubResource("StandardMaterial3D_bar_futuriste")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Bar"]
+shape = SubResource("BoxShape3D_4xowi")
+
+[node name="Mur_Gauche" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 2.5, 0)
+physics_material_override = ExtResource("1_a202f")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Mur_Gauche"]
+mesh = SubResource("BoxMesh_a202f")
+material_override = SubResource("StandardMaterial3D_mur_futuriste")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Mur_Gauche"]
+shape = SubResource("BoxShape3D_noarx")
+
+[node name="Mur_Droit" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 2.5, 0)
+physics_material_override = ExtResource("1_a202f")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Mur_Droit"]
+mesh = SubResource("BoxMesh_a0tk4")
+material_override = SubResource("StandardMaterial3D_mur_futuriste")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Mur_Droit"]
+shape = SubResource("BoxShape3D_a202f")
+
+[node name="Mur_Haut" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, 0)
+physics_material_override = ExtResource("1_a202f")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Mur_Haut"]
+mesh = SubResource("BoxMesh_r3fl7")
+material_override = SubResource("StandardMaterial3D_mur_futuriste")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Mur_Haut"]
+shape = SubResource("BoxShape3D_jka67")
+
+[node name="ZoneMort" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ZoneMort"]
+shape = SubResource("BoxShape3D_jka67")
+
+[node name="Briques" type="Node3D" parent="."]
+
+[node name="Balles" type="Node3D" parent="."]
+
+[node name="Capsules" type="Node3D" parent="."]
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 4)
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.8834796, -0.21293572, 0.41727948, 0, 0.89072907, 0.45453477, -0.4684696, -0.4015722, 0.78694093, 0, 7.4500732, 1.2687187)
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="Control" type="Control" parent="HUD"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ScoreLabel" type="Label" parent="HUD/Control"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 8.0
+offset_right = 220.0
+offset_bottom = 36.0
+theme_override_font_sizes/font_size = 20
+text = "Score : 0"
+
+[node name="ViesLabel" type="Label" parent="HUD/Control"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 38.0
+offset_right = 220.0
+offset_bottom = 66.0
+theme_override_font_sizes/font_size = 20
+text = "Vies : 3"
+
+[node name="NiveauLabel" type="Label" parent="HUD/Control"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 68.0
+offset_right = 220.0
+offset_bottom = 96.0
+theme_override_font_sizes/font_size = 20
+text = "Niveau : 1"
+
+[node name="MeilleurLabel" type="Label" parent="HUD/Control"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 98.0
+offset_right = 220.0
+offset_bottom = 126.0
+theme_override_font_sizes/font_size = 20
+text = "Record : 0"
+
+[node name="MessageLabel" type="Label" parent="HUD/Control"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 32
+text = "Appuyez sur Espace pour lancer"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PauseMenu" parent="." instance=ExtResource("9_pause")]
+visible = false
