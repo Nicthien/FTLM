@@ -21,6 +21,7 @@ public partial class MainMenu : Control
 	private readonly Label[] _labelsSlot = new Label[PartieConfig.MaxJoueurs];
 	private readonly Button[] _boutonsSlot = new Button[PartieConfig.MaxJoueurs];
 	private Button _demarrerReseau;
+	private Button _pretReseau;
 	private LineEdit _champIp;
 	private LineEdit _champPort;
 
@@ -42,6 +43,12 @@ public partial class MainMenu : Control
 	public override void _Ready()
 	{
 		ProcessMode = ProcessModeEnum.Always;
+
+		// Serveur dedie : pas de menu, on demarre l'hote sans joueur local et on rend la main
+		// a la console / a l'auto-demarrage (tous prets). Doit etre teste avant tout le reste.
+		if (DemarrerServeurDedieSiDemande())
+			return;
+
 		MenuTheme.Appliquer(this);
 		SettingsManager.Charger();
 		SettingsManager.Appliquer(GetTree());
@@ -68,6 +75,52 @@ public partial class MainMenu : Control
 			CallDeferred(MethodName.Nouveau);
 
 		DemarrerHarnaisReseauSiDemande();
+	}
+
+	// Serveur dedie headless : "--serveur" demarre un hote sans joueur local. Port et nombre
+	// de joueurs reglables (--port <n> / --port=<n>, --joueurs <n> / --joueurs=<n>).
+	// Lancement type : Godot ... --headless -- --serveur --port 42424 --joueurs 2
+	private bool DemarrerServeurDedieSiDemande()
+	{
+		bool demande = false;
+		foreach (string arg in ArgsCombines())
+			if (arg == "--serveur" || arg == "--server" || arg == "--dedie")
+			{
+				demande = true;
+				break;
+			}
+
+		if (!demande || NetworkSession.Instance is not NetworkSession session)
+			return false;
+
+		int port = LireArgInt("--port", NetworkSession.PortParDefaut);
+		int joueurs = LireArgInt("--joueurs", 2);
+
+		if (!session.DemarrerServeurDedie(port, joueurs))
+		{
+			GD.PushError($"[SERVEUR] Impossible d'ouvrir le serveur sur le port {port}.");
+			GetTree().Quit(1);
+			return true;
+		}
+
+		GD.Print($"[SERVEUR] Serveur dedie demarre sur le port {port} pour {PartieConfig.NombreJoueurs} joueurs.");
+		return true;
+	}
+
+	// Lit la valeur entiere d'un argument "--cle <valeur>" ou "--cle=<valeur>".
+	private static int LireArgInt(string cle, int defaut)
+	{
+		string prefixe = cle + "=";
+		string[] args = System.Linq.Enumerable.ToArray(ArgsCombines());
+		for (int i = 0; i < args.Length; i++)
+		{
+			if (args[i].StartsWith(prefixe, System.StringComparison.Ordinal)
+				&& int.TryParse(args[i].Substring(prefixe.Length), out int v))
+				return v;
+			if (args[i] == cle && i + 1 < args.Length && int.TryParse(args[i + 1], out int v2))
+				return v2;
+		}
+		return defaut;
 	}
 
 	// Harnais deux instances : --nethost ouvre un hote 2 joueurs (slot 2 distant) et
@@ -309,6 +362,11 @@ public partial class MainMenu : Control
 		retour.Pressed += QuitterReseau;
 		actions.AddChild(retour);
 
+		_pretReseau = new Button { Text = "Pret", ToggleMode = true, CustomMinimumSize = new Vector2(140.0f, 44.0f) };
+		_pretReseau.Toggled += (pressed) => NetworkSession.Instance?.DefinirPretLocal(pressed);
+		actions.AddChild(_pretReseau);
+
+		// "Demarrer" reste un forcage reserve a l'hote (lance meme si tout le monde n'est pas pret).
 		_demarrerReseau = new Button { Text = "Demarrer", CustomMinimumSize = new Vector2(160.0f, 44.0f) };
 		_demarrerReseau.Pressed += () => NetworkSession.Instance?.HoteDemarrerPartie();
 		actions.AddChild(_demarrerReseau);
@@ -517,12 +575,21 @@ public partial class MainMenu : Control
 		if (_reseauPanel == null || !_reseauPanel.Visible)
 			return;
 
-		bool hote = NetworkSession.Instance?.EstHote ?? false;
+		NetworkSession session = NetworkSession.Instance;
+		bool hote = session?.EstHote ?? false;
 		_titreReseau.Text = hote ? "Lobby (hote)" : "Lobby (client)";
 		_ligneNombreReseau.Visible = hote;
 		_demarrerReseau.Visible = hote;
 		if (hote)
-			_demarrerReseau.Disabled = !(NetworkSession.Instance?.PartiePeutDemarrer() ?? false);
+			_demarrerReseau.Disabled = !(session?.PartiePeutDemarrer() ?? false);
+
+		// Bouton "Pret" : visible si cette machine controle un emplacement humain.
+		int slotLocal = PartieConfig.SlotLocal;
+		bool slotHumainLocal = slotLocal >= 0 && slotLocal < PartieConfig.NombreJoueurs
+			&& PartieConfig.ControleDe(slotLocal) != PartieConfig.TypeControle.IA;
+		_pretReseau.Visible = slotHumainLocal;
+		if (slotHumainLocal && session != null)
+			_pretReseau.SetPressedNoSignal(session.EstPret(slotLocal));
 
 		for (int i = 0; i < _boutonsNombreReseau.Length; i++)
 			_boutonsNombreReseau[i].ButtonPressed = i + PartieConfig.MinJoueurs == PartieConfig.NombreJoueurs;
@@ -548,14 +615,21 @@ public partial class MainMenu : Control
 		switch (PartieConfig.ControleDe(i))
 		{
 			case PartieConfig.TypeControle.Humain:
-				return $"Joueur {i + 1} : Hote{moi}";
+				return $"Joueur {i + 1} : Hote{moi}{MentionPret(i)}";
 			case PartieConfig.TypeControle.IA:
 				return $"Joueur {i + 1} : IA";
 			default:
 				int peer = PartieConfig.PeerControleurDe(i);
-				string etat = peer == 0 ? "en attente..." : $"connecte{moi}";
-				return $"Joueur {i + 1} : {etat}";
+				if (peer == 0)
+					return $"Joueur {i + 1} : en attente...";
+				return $"Joueur {i + 1} : connecte{moi}{MentionPret(i)}";
 		}
+	}
+
+	// Indique si l'emplacement humain est pret (lobby).
+	private static string MentionPret(int i)
+	{
+		return (NetworkSession.Instance?.EstPret(i) ?? false) ? "  - PRET" : "  - pas pret";
 	}
 
 	private void Nouveau()

@@ -38,11 +38,21 @@ public partial class NetworkSession : Node
 	// des slots) d'une deconnexion en cours de partie (bascule IA / reprise solo).
 	public bool EnPartie { get; private set; }
 	public string MessageUpnp { get; private set; } = string.Empty;
+	// Serveur dedie : hote sans joueur local (SlotLocal = -1), tous les slots distants,
+	// pilote par la console stdin et/ou l'auto-demarrage quand tous les humains sont prets.
+	public bool ServeurDedie { get; private set; }
 
 	private ENetMultiplayerPeer _peer;
 	private Thread _threadUpnp;
 	private Upnp _upnp;
 	private bool _ferme;
+
+	// Etat "pret" par emplacement (lobby). L'auto-demarrage se declenche quand tous les
+	// humains actifs sont prets. Reinitialise quand la composition du lobby change.
+	private readonly bool[] _pretSlot = new bool[PartieConfig.MaxJoueurs];
+
+	// Console serveur dedie (lecture stdin sur un thread d'arriere-plan).
+	private Thread _threadConsole;
 
 	public override void _Ready()
 	{
@@ -63,6 +73,8 @@ public partial class NetworkSession : Node
 		Fermer();
 		_ferme = false;
 		Port = port;
+		ServeurDedie = false;
+		ReinitialiserPrets();
 		_peer = new ENetMultiplayerPeer();
 		Error err = _peer.CreateServer(port, MaxClients);
 		if (err != Error.Ok)
@@ -86,6 +98,62 @@ public partial class NetworkSession : Node
 		LancerUpnp(port);
 		EmitSignal(SignalName.LobbyMisAJour);
 		return true;
+	}
+
+	// ---------------------------------------------------------- Serveur dedie
+
+	// Demarre un hote SANS joueur local : tous les slots sont distants (humains ou IA en
+	// complement), SlotLocal = -1. Pilote par la console stdin et l'auto-demarrage.
+	public bool DemarrerServeurDedie(int port, int nbJoueurs)
+	{
+		Fermer();
+		_ferme = false;
+		Port = port;
+		ServeurDedie = true;
+		ReinitialiserPrets();
+		PartieConfig.NombreJoueurs = Mathf.Clamp(nbJoueurs, PartieConfig.MinJoueurs, PartieConfig.MaxJoueurs);
+
+		_peer = new ENetMultiplayerPeer();
+		// Aucune place reservee a un joueur local : capacite = nombre de slots distants.
+		Error err = _peer.CreateServer(port, PartieConfig.NombreJoueurs);
+		if (err != Error.Ok)
+		{
+			_peer = null;
+			ServeurDedie = false;
+			EmitSignal(SignalName.ConnexionEchouee, $"Impossible d'ouvrir le port {port} ({err}).");
+			return false;
+		}
+
+		Multiplayer.MultiplayerPeer = _peer;
+		Etat = EtatReseau.Hote;
+		PartieConfig.Mode = PartieConfig.ModePartie.Reseau;
+		PartieConfig.SlotLocal = -1;
+		PartieConfig.ReinitialiserPeers();
+
+		// Tous les slots actifs attendent un client (l'IA comble les vides au demarrage).
+		for (int i = 0; i < PartieConfig.MaxJoueurs; i++)
+			PartieConfig.DefinirControle(i, PartieConfig.TypeControle.HumainDistant);
+
+		LancerUpnp(port);
+		DemarrerConsoleServeur();
+		EmitSignal(SignalName.LobbyMisAJour);
+		return true;
+	}
+
+	// Comble chaque slot distant encore vide (aucun peer) par une IA. Appele avant le
+	// demarrage d'un serveur dedie (auto-demarrage ou commande "start").
+	public void HoteRemplirVidesAvecIA()
+	{
+		if (!EstHote)
+			return;
+
+		for (int i = 0; i < PartieConfig.NombreJoueurs; i++)
+			if (PartieConfig.ControleDe(i) == PartieConfig.TypeControle.HumainDistant
+				&& PartieConfig.PeerControleurDe(i) == 0)
+			{
+				PartieConfig.DefinirPeer(i, 0);
+				PartieConfig.DefinirControle(i, PartieConfig.TypeControle.IA);
+			}
 	}
 
 	// ----------------------------------------------------------------- Client
@@ -133,6 +201,8 @@ public partial class NetworkSession : Node
 	public void Fermer()
 	{
 		FermerTransport();
+		ServeurDedie = false;
+		ReinitialiserPrets();
 		PartieConfig.Mode = PartieConfig.ModePartie.Local;
 		PartieConfig.SlotLocal = 0;
 		PartieConfig.ReinitialiserPeers();
@@ -147,15 +217,18 @@ public partial class NetworkSession : Node
 			return;
 
 		PartieConfig.NombreJoueurs = Mathf.Clamp(nombre, PartieConfig.MinJoueurs, PartieConfig.MaxJoueurs);
+		ReinitialiserPrets();
 		ReassignerPeers();
 		DiffuserLobby();
 	}
 
-	// Bascule un slot entre HumainDistant (attend/contient un client) et IA. Le slot 0
-	// (hote) reste toujours humain local.
+	// Bascule un slot entre HumainDistant (attend/contient un client) et IA. En hote
+	// normal le slot 0 (humain local) n'est pas basculable ; en serveur dedie tous le sont.
 	public void HoteBasculerSlotIA(int slot)
 	{
-		if (!EstHote || slot <= 0 || slot >= PartieConfig.NombreJoueurs)
+		if (!EstHote || slot < 0 || slot >= PartieConfig.NombreJoueurs)
+			return;
+		if (!ServeurDedie && slot == 0)
 			return;
 
 		PartieConfig.TypeControle actuel = PartieConfig.ControleDe(slot);
@@ -169,8 +242,89 @@ public partial class NetworkSession : Node
 			PartieConfig.DefinirControle(slot, PartieConfig.TypeControle.IA);
 		}
 
+		_pretSlot[slot] = false;
 		ReassignerPeers();
 		DiffuserLobby();
+	}
+
+	// ---------------------------------------------------- Etat "pret" (lobby)
+
+	// Declare l'emplacement local pret/pas pret. Cote client : envoie a l'hote ; cote
+	// hote-joueur : applique localement et reevalue l'auto-demarrage.
+	public void DefinirPretLocal(bool pret)
+	{
+		if (EstClient)
+		{
+			RpcId(1, MethodName.HoteRecevoirPret, pret);
+			return;
+		}
+
+		if (EstHote && PartieConfig.SlotLocal >= 0 && PartieConfig.SlotLocal < _pretSlot.Length)
+		{
+			_pretSlot[PartieConfig.SlotLocal] = pret;
+			DiffuserLobby();
+			EvaluerDemarrageAuto();
+		}
+	}
+
+	public bool EstPret(int slot) => slot >= 0 && slot < _pretSlot.Length && _pretSlot[slot];
+
+	private void ReinitialiserPrets()
+	{
+		for (int i = 0; i < _pretSlot.Length; i++)
+			_pretSlot[i] = false;
+	}
+
+	// Vrai si chaque humain actif (local ou client connecte) est pret. Les slots distants
+	// vides sont tolerees en serveur dedie (combles par IA au demarrage). Exige >= 1 humain.
+	private bool TousHumainsPrets()
+	{
+		if (!EstHote || EnPartie)
+			return false;
+
+		int humains = 0;
+		for (int i = 0; i < PartieConfig.NombreJoueurs; i++)
+		{
+			switch (PartieConfig.ControleDe(i))
+			{
+				case PartieConfig.TypeControle.Humain:
+					humains++;
+					if (!_pretSlot[i])
+						return false;
+					break;
+				case PartieConfig.TypeControle.HumainDistant:
+					if (PartieConfig.PeerControleurDe(i) != 0)
+					{
+						humains++;
+						if (!_pretSlot[i])
+							return false;
+					}
+					else if (!ServeurDedie)
+					{
+						// Hote normal : un slot distant vide doit etre comble avant de partir.
+						return false;
+					}
+					break;
+			}
+		}
+
+		return humains > 0;
+	}
+
+	// Lance la partie si toutes les conditions "pret" sont reunies. En serveur dedie on
+	// comble d'abord les places vides par de l'IA.
+	private void EvaluerDemarrageAuto()
+	{
+		if (!TousHumainsPrets())
+			return;
+
+		if (ServeurDedie)
+		{
+			HoteRemplirVidesAvecIA();
+			GD.Print("[SERVEUR] Tous les humains prets -> demarrage automatique.");
+		}
+
+		HoteDemarrerPartie();
 	}
 
 	// Vrai si chaque slot actif a un controleur (hote, IA, ou client connecte).
@@ -256,8 +410,17 @@ public partial class NetworkSession : Node
 	{
 		int[] controles = SerialiserControles();
 		int[] peers = SerialiserPeers();
-		Rpc(MethodName.ClientRecevoirLobby, PartieConfig.NombreJoueurs, controles, peers);
+		int[] prets = SerialiserPrets();
+		Rpc(MethodName.ClientRecevoirLobby, PartieConfig.NombreJoueurs, controles, peers, prets);
 		EmitSignal(SignalName.LobbyMisAJour);
+	}
+
+	private int[] SerialiserPrets()
+	{
+		var arr = new int[PartieConfig.MaxJoueurs];
+		for (int i = 0; i < arr.Length; i++)
+			arr[i] = _pretSlot[i] ? 1 : 0;
+		return arr;
 	}
 
 	private static int[] SerialiserControles()
@@ -276,29 +439,47 @@ public partial class NetworkSession : Node
 		return arr;
 	}
 
-	private static void AppliquerLobby(int nombre, int[] controles, int[] peers)
+	private void AppliquerLobby(int nombre, int[] controles, int[] peers, int[] prets)
 	{
 		PartieConfig.NombreJoueurs = Mathf.Clamp(nombre, PartieConfig.MinJoueurs, PartieConfig.MaxJoueurs);
 		for (int i = 0; i < PartieConfig.MaxJoueurs && i < controles.Length; i++)
 			PartieConfig.DefinirControle(i, (PartieConfig.TypeControle)controles[i]);
 		for (int i = 0; i < PartieConfig.MaxJoueurs && i < peers.Length; i++)
 			PartieConfig.DefinirPeer(i, peers[i]);
+		for (int i = 0; i < _pretSlot.Length && i < prets.Length; i++)
+			_pretSlot[i] = prets[i] != 0;
 	}
 
 	// ------------------------------------------------------- RPC (cote client)
 
 	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
-	private void ClientRecevoirLobby(int nombre, int[] controles, int[] peers)
+	private void ClientRecevoirLobby(int nombre, int[] controles, int[] peers, int[] prets)
 	{
-		AppliquerLobby(nombre, controles, peers);
+		AppliquerLobby(nombre, controles, peers, prets);
 		PartieConfig.SlotLocal = PartieConfig.SlotDuPeer(Multiplayer.GetUniqueId());
 		EmitSignal(SignalName.LobbyMisAJour);
+	}
+
+	// Recue sur l'hote : un client (ou l'hote-joueur via boucle locale) declare son etat pret.
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+	private void HoteRecevoirPret(bool pret)
+	{
+		if (!EstHote)
+			return;
+
+		int slot = PartieConfig.SlotDuPeer(Multiplayer.GetRemoteSenderId());
+		if (slot < 0 || slot >= _pretSlot.Length)
+			return;
+
+		_pretSlot[slot] = pret;
+		DiffuserLobby();
+		EvaluerDemarrageAuto();
 	}
 
 	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
 	private void ClientDemarrerPartie(int nombre, int[] controles, int[] peers, int slotLocal)
 	{
-		AppliquerLobby(nombre, controles, peers);
+		AppliquerLobby(nombre, controles, peers, System.Array.Empty<int>());
 		PartieConfig.Mode = PartieConfig.ModePartie.Reseau;
 		PartieConfig.SlotLocal = slotLocal;
 		EnPartie = true;
@@ -313,6 +494,8 @@ public partial class NetworkSession : Node
 		if (_ferme || !EstHote || Multiplayer.MultiplayerPeer == null)
 			return;
 
+		// Nouvelle composition : les "prets" precedents ne sont plus valables.
+		ReinitialiserPrets();
 		ReassignerPeers();
 		DiffuserLobby();
 		EmitSignal(SignalName.MessageReseau, $"Joueur connecte (peer {id}).");
@@ -340,6 +523,7 @@ public partial class NetworkSession : Node
 		// Lobby : on libere le slot et on reorganise.
 		if (slot >= 0)
 			PartieConfig.DefinirPeer(slot, 0);
+		ReinitialiserPrets();
 		ReassignerPeers();
 		DiffuserLobby();
 		EmitSignal(SignalName.MessageReseau, $"Joueur deconnecte (peer {id}).");
@@ -371,6 +555,126 @@ public partial class NetworkSession : Node
 
 		Fermer();
 		EmitSignal(SignalName.Deconnecte, "Hote deconnecte.");
+	}
+
+	// --------------------------------------------------- Console serveur dedie
+
+	// Force le demarrage (commande "start") : comble les vides par IA puis lance, meme si
+	// tous les humains ne sont pas prets.
+	public void DemarrerServeurMaintenant()
+	{
+		if (!EstHote)
+			return;
+		HoteRemplirVidesAvecIA();
+		HoteDemarrerPartie();
+	}
+
+	// Lit les commandes operateur sur stdin (thread d'arriere-plan). NetworkSession etant un
+	// autoload, le thread survit au changement de scene. Marshale chaque ligne vers le thread
+	// principal via CallDeferred (thread-safe dans Godot).
+	private void DemarrerConsoleServeur()
+	{
+		AfficherAideServeur();
+		_threadConsole = new Thread(BoucleConsole) { IsBackground = true };
+		_threadConsole.Start();
+	}
+
+	private void BoucleConsole()
+	{
+		while (!_ferme)
+		{
+			string ligne;
+			try
+			{
+				ligne = System.Console.ReadLine();
+			}
+			catch (System.Exception)
+			{
+				return;
+			}
+
+			if (ligne == null)
+				return; // stdin ferme
+
+			CallDeferred(MethodName.ExecuterCommandeServeur, ligne);
+		}
+	}
+
+	private static void AfficherAideServeur()
+	{
+		GD.Print("[SERVEUR] Serveur dedie pret. Commandes : "
+			+ "start | status | ia <slot> | humain <slot> | joueurs <n> | quit");
+	}
+
+	private void ExecuterCommandeServeur(string ligne)
+	{
+		if (string.IsNullOrWhiteSpace(ligne))
+			return;
+
+		string[] mots = ligne.Trim().Split((char[])null, System.StringSplitOptions.RemoveEmptyEntries);
+		string cmd = mots[0].ToLowerInvariant();
+
+		switch (cmd)
+		{
+			case "start":
+				GD.Print("[SERVEUR] Demarrage force.");
+				DemarrerServeurMaintenant();
+				break;
+			case "status":
+				AfficherStatutServeur();
+				break;
+			case "ia":
+			case "humain":
+				if (mots.Length >= 2 && int.TryParse(mots[1], out int slot))
+				{
+					PartieConfig.TypeControle vise = cmd == "ia"
+						? PartieConfig.TypeControle.IA
+						: PartieConfig.TypeControle.HumainDistant;
+					if (PartieConfig.ControleDe(slot) != vise)
+						HoteBasculerSlotIA(slot);
+					AfficherStatutServeur();
+				}
+				else
+				{
+					GD.Print($"[SERVEUR] Usage : {cmd} <slot>");
+				}
+				break;
+			case "joueurs":
+				if (mots.Length >= 2 && int.TryParse(mots[1], out int n))
+				{
+					HoteDefinirNombreJoueurs(n);
+					AfficherStatutServeur();
+				}
+				else
+				{
+					GD.Print("[SERVEUR] Usage : joueurs <2-4>");
+				}
+				break;
+			case "quit":
+			case "exit":
+				GD.Print("[SERVEUR] Arret.");
+				GetTree().Quit();
+				break;
+			default:
+				GD.Print($"[SERVEUR] Commande inconnue : {cmd}");
+				AfficherAideServeur();
+				break;
+		}
+	}
+
+	private void AfficherStatutServeur()
+	{
+		var sb = new System.Text.StringBuilder($"[SERVEUR] {PartieConfig.NombreJoueurs} joueurs | etat={Etat}");
+		for (int i = 0; i < PartieConfig.NombreJoueurs; i++)
+		{
+			string type = PartieConfig.ControleDe(i).ToString();
+			int peer = PartieConfig.PeerControleurDe(i);
+			string co = PartieConfig.ControleDe(i) == PartieConfig.TypeControle.HumainDistant
+				? (peer != 0 ? $"peer {peer}" : "en attente") : "-";
+			string pret = _pretSlot[i] ? "PRET" : "non pret";
+			sb.Append($"\n  slot {i}: {type} ({co}) {pret}");
+		}
+		GD.Print(sb.ToString());
 	}
 
 	// -------------------------------------------------------------- UPnP

@@ -19,6 +19,7 @@
 - Preserve user-created scene node names, especially the French labels such as `Mur_Gauche`, `Mur_Droit`, `Mur_Haut`, `Mur_Bas`, and `Balle`.
 
 ## Notes For Future Changes
+- **Dedicated server / Prêt:** `--headless -- --serveur [--port n] [--joueurs n]` runs an authoritative host with no local player, driven by an stdin console (`start`/`status`/`ia`/`humain`/`joueurs`/`quit`). The réseau lobby has a **Prêt** button that auto-starts the match once all connected humans are ready (`NetworkSession.TousHumainsPrets`/`EvaluerDemarrageAuto`); the host **Demarrer** button is a manual force-start. See CLAUDE.md for details.
 - The ball currently gets its initial impulse in `Scripts/BalleScript.cs`.
 - The `Balle` node locks linear movement on Z, disables gravity, and uses a bouncy physics material.
 - The repository is not currently initialized as a git repository.
