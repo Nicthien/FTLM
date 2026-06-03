@@ -57,12 +57,6 @@ theme_override_font_sizes/font_size = 30
 text = "Free The Last Marble"
 horizontal_alignment = 1
 
-[node name="Subtitle" type="Label" parent="MenuPanel/VBox"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 18
-text = "Détruis le tout dernier bloc"
-horizontal_alignment = 1
-
 [node name="NouveauButton" type="Button" parent="MenuPanel/VBox"]
 custom_minimum_size = Vector2(0, 44)
 layout_mode = 2

@@ -26,6 +26,10 @@ public partial class BriqueScript : StaticBody3D
 	// Nombre de coups restants avant destruction.
 	public int Resistance { get; private set; } = 1;
 
+	// Identifiant reseau, assigne de facon deterministe a la generation (meme ordre
+	// sur l'hote et les clients). Sert a cibler les disparitions/coups en reseau.
+	public int IdReseau { get; set; }
+
 	// Resistance initiale, pour calculer l'usure visuelle.
 	private int _resistanceMax = 1;
 
@@ -83,6 +87,16 @@ public partial class BriqueScript : StaticBody3D
 
 		AppliquerCouleur();
 		return false;
+	}
+
+	// Cote client : applique une resistance recue du reseau et rafraichit la couleur.
+	public void DefinirResistanceReseau(int resistance)
+	{
+		if (!EstDestructible)
+			return;
+
+		Resistance = Mathf.Max(1, resistance);
+		AppliquerCouleur();
 	}
 
 	private void AppliquerCouleur()

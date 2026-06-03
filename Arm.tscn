@@ -1,0 +1,62 @@
+[gd_scene load_steps=8 format=3 uid="uid://carmcorridor001"]
+
+[ext_resource type="Script" uid="uid://b2fvdpoh0p4ep" path="res://Scripts/BarScript.cs" id="1_barsc"]
+[ext_resource type="Texture2D" uid="uid://cfp888d6rfmpm" path="res://Textures/bar_futuriste_clean.png" id="2_bartex"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_bar_metal"]
+albedo_color = Color(0.025, 0.03, 0.04, 1)
+metallic = 0.85
+roughness = 0.22
+
+[sub_resource type="BoxMesh" id="BoxMesh_bar"]
+size = Vector3(1, 0.2, 0.2)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_bar_futuriste"]
+cull_mode = 2
+shading_mode = 0
+albedo_texture = ExtResource("2_bartex")
+metallic = 0.85
+roughness = 0.18
+emission_enabled = true
+emission = Color(0, 0.65, 0.9, 1)
+emission_energy_multiplier = 0.25
+
+[sub_resource type="QuadMesh" id="QuadMesh_bar"]
+size = Vector2(1, 0.2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_bar"]
+size = Vector3(1, 0.2, 0.2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone"]
+size = Vector3(8.2, 0.2, 0.2)
+
+[node name="Arm" type="Node3D"]
+
+[node name="Bar" type="AnimatableBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+script = ExtResource("1_barsc")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Bar"]
+material_override = SubResource("StandardMaterial3D_bar_metal")
+mesh = SubResource("BoxMesh_bar")
+
+[node name="TextureFaceAvant" type="MeshInstance3D" parent="Bar"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.102)
+material_override = SubResource("StandardMaterial3D_bar_futuriste")
+mesh = SubResource("QuadMesh_bar")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Bar"]
+shape = SubResource("BoxShape3D_bar")
+
+[node name="ZoneMort" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ZoneMort"]
+shape = SubResource("BoxShape3D_zone")
+
+[node name="Ville" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.48, -0.115)
+
+[node name="Briques" type="Node3D" parent="."]
+
+[node name="Capsules" type="Node3D" parent="."]

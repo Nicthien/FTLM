@@ -1,3 +1,7 @@
 # Godot 4+ specific ignores
 .godot/
 /android/
+
+# Sorties de build / artefacts de test
+/Build/
+test_run.log

@@ -16,6 +16,39 @@
       "stopAtEntry": false
     },
     {
+      "name": "Jouer 2 joueurs",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${config:godot-dotnet-tools.executablePath}",
+      "preLaunchTask": "build",
+      "args": ["--path", "${workspaceRoot}", "--", "--jeu2"],
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole",
+      "stopAtEntry": false
+    },
+    {
+      "name": "Jouer 3 joueurs",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${config:godot-dotnet-tools.executablePath}",
+      "preLaunchTask": "build",
+      "args": ["--path", "${workspaceRoot}", "--", "--jeu3"],
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole",
+      "stopAtEntry": false
+    },
+    {
+      "name": "Jouer 4 joueurs",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${config:godot-dotnet-tools.executablePath}",
+      "preLaunchTask": "build",
+      "args": ["--path", "${workspaceRoot}", "--", "--jeu4"],
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole",
+      "stopAtEntry": false
+    },
+    {
       "name": "Launch Editor",
       "type": "coreclr",
       "request": "launch",

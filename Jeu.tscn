@@ -1,10 +1,6 @@
-[gd_scene format=3 uid="uid://dpocflmct2nue"]
+[gd_scene load_steps=5 format=3 uid="uid://dpocflmct2nue"]
 
-[ext_resource type="PhysicsMaterial" uid="uid://cxkhx8cn2pmba" path="res://Physics_Material/Mur.tres" id="1_a202f"]
-[ext_resource type="Script" uid="uid://b2fvdpoh0p4ep" path="res://Scripts/BarScript.cs" id="3_barsc"]
 [ext_resource type="Script" uid="uid://wttu014uorcq" path="res://Scripts/GameManager.cs" id="4_gm"]
-[ext_resource type="Texture2D" uid="uid://cfp888d6rfmpm" path="res://Textures/bar_futuriste_clean.png" id="6_bartex"]
-[ext_resource type="Texture2D" uid="uid://n23fgbuxean6" path="res://Textures/mur_futuriste.png" id="7_murtex"]
 [ext_resource type="Texture2D" uid="uid://bna2mhxco6qo4" path="res://Textures/fond_futuriste.png" id="8_fondtex"]
 [ext_resource type="PackedScene" uid="uid://dpausemenu001" path="res://PauseMenu.tscn" id="9_pause"]
 
@@ -14,171 +10,29 @@ shading_mode = 0
 albedo_texture = ExtResource("8_fondtex")
 
 [sub_resource type="QuadMesh" id="QuadMesh_fond_futuriste"]
-size = Vector2(4.35, 10.8)
+size = Vector2(8.7, 11.8)
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_bar_metal"]
-albedo_color = Color(0.025, 0.03, 0.04, 1)
-metallic = 0.85
-roughness = 0.22
-
-[sub_resource type="BoxMesh" id="BoxMesh_4xowi"]
-size = Vector3(1, 0.2, 0.2)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_bar_futuriste"]
-cull_mode = 2
-shading_mode = 0
-albedo_color = Color(0.025, 0.035, 0.055, 1)
-albedo_texture = ExtResource("6_bartex")
-
-[sub_resource type="QuadMesh" id="QuadMesh_bar_futuriste"]
-size = Vector2(1, 0.2)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_4xowi"]
-size = Vector3(1, 0.2, 0.2)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_mur_futuriste"]
-albedo_texture = ExtResource("7_murtex")
-metallic = 0.55
-roughness = 0.28
-
-[sub_resource type="BoxMesh" id="BoxMesh_a202f"]
-size = Vector3(0.2, 5, 0.2)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_noarx"]
-size = Vector3(0.2, 5, 0.2)
-
-[sub_resource type="BoxMesh" id="BoxMesh_a0tk4"]
-size = Vector3(0.2, 5, 0.2)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_a202f"]
-size = Vector3(0.2, 5, 0.2)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_jka67"]
-size = Vector3(4.2, 0.2, 0.2)
-
-[node name="Node3D" type="Node3D" unique_id=568257413]
+[node name="Jeu" type="Node3D"]
 script = ExtResource("4_gm")
 
-[node name="Fond" type="MeshInstance3D" parent="." unique_id=757759636]
+[node name="Fond" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, -0.13)
 material_override = SubResource("StandardMaterial3D_fond_futuriste")
 mesh = SubResource("QuadMesh_fond_futuriste")
 
-[node name="Ville" type="Node3D" parent="." unique_id=1634884407]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.08, -0.115)
+[node name="Bras" type="Node3D" parent="."]
 
-[node name="Ville_IA" type="Node3D" parent="." unique_id=568562921]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10.65, -0.115)
+[node name="Murs" type="Node3D" parent="."]
 
-[node name="Bar" type="AnimatableBody3D" parent="." unique_id=608071329]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
-script = ExtResource("3_barsc")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Bar" unique_id=2051298255]
-material_override = SubResource("StandardMaterial3D_bar_metal")
-mesh = SubResource("BoxMesh_4xowi")
-
-[node name="TextureFaceAvant" type="MeshInstance3D" parent="Bar" unique_id=1441963920]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.102)
-material_override = SubResource("StandardMaterial3D_bar_futuriste")
-mesh = SubResource("QuadMesh_bar_futuriste")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Bar" unique_id=606768773]
-shape = SubResource("BoxShape3D_4xowi")
-
-[node name="Bar_IA" type="AnimatableBody3D" parent="." unique_id=1445344347]
-transform = Transform3D(1, 0, 0, 0, -1, 0, 0, 0, 1, 0, 9.6, 0)
-script = ExtResource("3_barsc")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Bar_IA" unique_id=633993593]
-material_override = SubResource("StandardMaterial3D_bar_metal")
-mesh = SubResource("BoxMesh_4xowi")
-
-[node name="TextureFaceAvant" type="MeshInstance3D" parent="Bar_IA" unique_id=1100938643]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.102)
-material_override = SubResource("StandardMaterial3D_bar_futuriste")
-mesh = SubResource("QuadMesh_bar_futuriste")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Bar_IA" unique_id=363939374]
-shape = SubResource("BoxShape3D_4xowi")
-
-[node name="Mur_Gauche" type="StaticBody3D" parent="." unique_id=886954005]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 2.5, 0)
-physics_material_override = ExtResource("1_a202f")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Mur_Gauche" unique_id=415018485]
-material_override = SubResource("StandardMaterial3D_mur_futuriste")
-mesh = SubResource("BoxMesh_a202f")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Mur_Gauche" unique_id=1999056957]
-shape = SubResource("BoxShape3D_noarx")
-
-[node name="Mur_Droit" type="StaticBody3D" parent="." unique_id=183885109]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 2.5, 0)
-physics_material_override = ExtResource("1_a202f")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Mur_Droit" unique_id=1489010670]
-material_override = SubResource("StandardMaterial3D_mur_futuriste")
-mesh = SubResource("BoxMesh_a0tk4")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Mur_Droit" unique_id=1120058497]
-shape = SubResource("BoxShape3D_a202f")
-
-[node name="Mur_Gauche_IA" type="StaticBody3D" parent="." unique_id=1534367311]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 7.5, 0)
-physics_material_override = ExtResource("1_a202f")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Mur_Gauche_IA" unique_id=508305562]
-material_override = SubResource("StandardMaterial3D_mur_futuriste")
-mesh = SubResource("BoxMesh_a202f")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Mur_Gauche_IA" unique_id=1798074582]
-shape = SubResource("BoxShape3D_noarx")
-
-[node name="Mur_Droit_IA" type="StaticBody3D" parent="." unique_id=221870327]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 7.5, 0)
-physics_material_override = ExtResource("1_a202f")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Mur_Droit_IA" unique_id=824460152]
-material_override = SubResource("StandardMaterial3D_mur_futuriste")
-mesh = SubResource("BoxMesh_a0tk4")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Mur_Droit_IA" unique_id=410786756]
-shape = SubResource("BoxShape3D_a202f")
-
-[node name="ZoneMort" type="Area3D" parent="." unique_id=479169408]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="ZoneMort" unique_id=383633948]
-shape = SubResource("BoxShape3D_jka67")
-
-[node name="ZoneMort_IA" type="Area3D" parent="." unique_id=1782612147]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10.5, 0)
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="ZoneMort_IA" unique_id=937597480]
-shape = SubResource("BoxShape3D_jka67")
-
-[node name="Briques" type="Node3D" parent="." unique_id=1651768417]
-
-[node name="Briques_IA" type="Node3D" parent="." unique_id=2040853986]
-
-[node name="Balles" type="Node3D" parent="." unique_id=1930413903]
-
-[node name="Balles_IA" type="Node3D" parent="." unique_id=1495541615]
-
-[node name="Capsules" type="Node3D" parent="." unique_id=533195524]
-
-[node name="Capsules_IA" type="Node3D" parent="." unique_id=852026820]
-
-[node name="Camera3D" type="Camera3D" parent="." unique_id=1611076710]
+[node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, 8.2)
 
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1299078139]
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.8834796, -0.21293572, 0.41727948, 0, 0.89072907, 0.45453477, -0.4684696, -0.4015722, 0.78694093, 0, 7.4500732, 1.2687187)
 
-[node name="HUD" type="CanvasLayer" parent="." unique_id=1656553116]
+[node name="HUD" type="CanvasLayer" parent="."]
 
-[node name="Control" type="Control" parent="HUD" unique_id=1030185618]
+[node name="Control" type="Control" parent="HUD"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -186,7 +40,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="ScoreLabel" type="Label" parent="HUD/Control" unique_id=1483984244]
+[node name="ScoreLabel" type="Label" parent="HUD/Control"]
 layout_mode = 0
 offset_left = 12.0
 offset_top = 8.0
@@ -195,7 +49,7 @@ offset_bottom = 36.0
 theme_override_font_sizes/font_size = 20
 text = "Score : 0"
 
-[node name="ViesLabel" type="Label" parent="HUD/Control" unique_id=1455305107]
+[node name="ViesLabel" type="Label" parent="HUD/Control"]
 layout_mode = 0
 offset_left = 12.0
 offset_top = 38.0
@@ -204,7 +58,7 @@ offset_bottom = 66.0
 theme_override_font_sizes/font_size = 20
 text = "Vies : 3"
 
-[node name="NiveauLabel" type="Label" parent="HUD/Control" unique_id=1927187939]
+[node name="NiveauLabel" type="Label" parent="HUD/Control"]
 layout_mode = 0
 offset_left = 12.0
 offset_top = 68.0
@@ -213,7 +67,7 @@ offset_bottom = 96.0
 theme_override_font_sizes/font_size = 20
 text = "Niveau : 1"
 
-[node name="MeilleurLabel" type="Label" parent="HUD/Control" unique_id=1904907270]
+[node name="MeilleurLabel" type="Label" parent="HUD/Control"]
 layout_mode = 0
 offset_left = 12.0
 offset_top = 98.0
@@ -222,7 +76,7 @@ offset_bottom = 126.0
 theme_override_font_sizes/font_size = 20
 text = "Record : 0"
 
-[node name="MessageLabel" type="Label" parent="HUD/Control" unique_id=1598535344]
+[node name="MessageLabel" type="Label" parent="HUD/Control"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -234,4 +88,4 @@ text = "Appuyez sur Espace pour lancer"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="PauseMenu" parent="." unique_id=125558612 instance=ExtResource("9_pause")]
+[node name="PauseMenu" parent="." instance=ExtResource("9_pause")]

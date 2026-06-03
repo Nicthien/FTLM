@@ -10,6 +10,7 @@ public partial class PauseMenu : CanvasLayer
 	public override void _Ready()
 	{
 		ProcessMode = ProcessModeEnum.Always;
+		MenuTheme.Appliquer(GetNode<Control>("Root"));
 		Visible = false;
 		_gameManager = GetParent<GameManager>();
 		_options = GetNode<OptionsMenu>("OptionsMenu");

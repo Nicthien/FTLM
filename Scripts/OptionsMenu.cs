@@ -3,13 +3,18 @@ using System.Collections.Generic;
 
 public partial class OptionsMenu : PanelContainer
 {
-	private readonly Dictionary<string, string> _libellesActions = new()
+	// Lignes (types d'action) et colonnes (joueurs) de la grille de remappage.
+	private static readonly string[] _lignesActions = { "Gauche", "Droite", "Lancer", "Capacite", "Cibler" };
+	private static readonly (string Titre, string[] Actions)[] _joueurs =
 	{
-		{ "ui_left", "Gauche" },
-		{ "ui_right", "Droite" },
-		{ "lancer_balle", "Lancer" },
-		{ "ui_cancel", "Pause" },
+		// La 5e action ("Cibler") du Joueur 1 est la molette souris, non remappable ("").
+		("Joueur 1", new[] { "ui_left", "ui_right", "lancer_balle", "tirer_capacite", "" }),
+		("Joueur 2", new[] { "j2_gauche", "j2_droite", "j2_action", "j2_capacite", "j2_cibler" }),
+		("Joueur 3", new[] { "j3_gauche", "j3_droite", "j3_action", "j3_capacite", "j3_cibler" }),
+		("Joueur 4", new[] { "j4_gauche", "j4_droite", "j4_action", "j4_capacite", "j4_cibler" }),
 	};
+
+	private readonly Dictionary<string, Button> _boutonsTouche = new();
 
 	private CheckButton _pleinEcran;
 	private OptionButton _resolution;
@@ -27,6 +32,7 @@ public partial class OptionsMenu : PanelContainer
 	public override void _Ready()
 	{
 		ProcessMode = ProcessModeEnum.Always;
+		MenuTheme.Appliquer(this);
 		Visible = false;
 
 		_pleinEcran = GetNode<CheckButton>("Margin/VBox/Tabs/Graphique/GraphiqueBox/PleinEcran");
@@ -53,11 +59,7 @@ public partial class OptionsMenu : PanelContainer
 		_sfx.ValueChanged += value => Modifier(() => SettingsManager.VolumeSfxDb = (float)value);
 		_music.ValueChanged += value => Modifier(() => SettingsManager.VolumeMusicDb = (float)value);
 
-		GetNode<Button>("Margin/VBox/Tabs/Touches/TouchesBox/GaucheButton").Pressed += () => AttendreTouche("ui_left");
-		GetNode<Button>("Margin/VBox/Tabs/Touches/TouchesBox/DroiteButton").Pressed += () => AttendreTouche("ui_right");
-		GetNode<Button>("Margin/VBox/Tabs/Touches/TouchesBox/LancerButton").Pressed += () => AttendreTouche("lancer_balle");
-		GetNode<Button>("Margin/VBox/Tabs/Touches/TouchesBox/PauseButton").Pressed += () => AttendreTouche("ui_cancel");
-		GetNode<Button>("Margin/VBox/Tabs/Touches/TouchesBox/ResetButton").Pressed += ResetTouches;
+		ConstruireTouches();
 		GetNode<Button>("Margin/VBox/RetourButton").Pressed += Fermer;
 
 		Rafraichir();
@@ -118,11 +120,61 @@ public partial class OptionsMenu : PanelContainer
 		Rafraichir();
 	}
 
+	// Genere la grille de remappage : une colonne par joueur, une ligne par action,
+	// puis la touche de pause commune et le bouton de reinitialisation.
+	private void ConstruireTouches()
+	{
+		var box = GetNode<VBoxContainer>("Margin/VBox/Tabs/Touches/TouchesBox");
+		foreach (Node enfant in box.GetChildren())
+			enfant.QueueFree();
+		_boutonsTouche.Clear();
+
+		var grille = new GridContainer
+		{
+			Columns = _joueurs.Length + 1,
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+		};
+		grille.AddThemeConstantOverride("h_separation", 8);
+		grille.AddThemeConstantOverride("v_separation", 6);
+		box.AddChild(grille);
+
+		// En-tete : cellule vide puis un titre par joueur.
+		grille.AddChild(new Label());
+		foreach ((string titre, string[] _) in _joueurs)
+			grille.AddChild(new Label { Text = titre, HorizontalAlignment = HorizontalAlignment.Center });
+
+		for (int ligne = 0; ligne < _lignesActions.Length; ligne++)
+		{
+			grille.AddChild(new Label { Text = _lignesActions[ligne] });
+			foreach ((string _, string[] actions) in _joueurs)
+				grille.AddChild(CreerBoutonTouche(actions[ligne]));
+		}
+
+		box.AddChild(CreerBoutonTouche("ui_cancel"));
+
+		var reset = new Button { Text = "Reset touches" };
+		reset.Pressed += ResetTouches;
+		box.AddChild(reset);
+	}
+
+	private Button CreerBoutonTouche(string action)
+	{
+		// Action vide = liaison fixe (ex. molette souris du Joueur 1) : bouton inerte.
+		if (string.IsNullOrEmpty(action))
+			return new Button { Text = "Molette", Disabled = true, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+
+		var bouton = new Button { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+		bouton.Pressed += () => AttendreTouche(action);
+		_boutonsTouche[action] = bouton;
+		return bouton;
+	}
+
 	private void AttendreTouche(string action)
 	{
 		_actionEnAttente = action;
 		Button bouton = BoutonAction(action);
-		bouton.Text = $"{_libellesActions[action]} : ...";
+		if (bouton != null)
+			bouton.Text = "...";
 	}
 
 	private void SauverAppliquer()
@@ -143,8 +195,11 @@ public partial class OptionsMenu : PanelContainer
 		_music.Value = SettingsManager.VolumeMusicDb;
 		_rafraichit = false;
 
-		foreach (string action in _libellesActions.Keys)
-			BoutonAction(action).Text = $"{_libellesActions[action]} : {SettingsManager.TexteTouche(action)}";
+		foreach (var paire in _boutonsTouche)
+		{
+			string touche = SettingsManager.TexteTouche(paire.Key);
+			paire.Value.Text = paire.Key == "ui_cancel" ? $"Pause : {touche}" : touche;
+		}
 
 		RafraichirVolumes();
 	}
@@ -156,12 +211,5 @@ public partial class OptionsMenu : PanelContainer
 		_musicLabel.Text = $"Music : {(int)_music.Value} dB";
 	}
 
-	private Button BoutonAction(string action) => action switch
-	{
-		"ui_left" => GetNode<Button>("Margin/VBox/Tabs/Touches/TouchesBox/GaucheButton"),
-		"ui_right" => GetNode<Button>("Margin/VBox/Tabs/Touches/TouchesBox/DroiteButton"),
-		"lancer_balle" => GetNode<Button>("Margin/VBox/Tabs/Touches/TouchesBox/LancerButton"),
-		"ui_cancel" => GetNode<Button>("Margin/VBox/Tabs/Touches/TouchesBox/PauseButton"),
-		_ => null,
-	};
+	private Button BoutonAction(string action) => _boutonsTouche.TryGetValue(action, out Button bouton) ? bouton : null;
 }

@@ -6,6 +6,7 @@ public static class SettingsManager
 {
 	private const string CheminConfig = "user://settings.cfg";
 	private const string ActionLancer = "lancer_balle";
+	private const string ActionCapacite = "tirer_capacite";
 
 	public static bool PleinEcran { get; set; }
 	public static string Resolution { get; set; } = "1280x720";
@@ -18,13 +19,26 @@ public static class SettingsManager
 	public static readonly string[] Resolutions = { "960x540", "1280x720", "1600x900", "1920x1080" };
 	public static readonly string[] Qualites = { "Faible", "Moyen", "Eleve" };
 
-	private static readonly Dictionary<string, Key> TouchesDefaut = new()
+	private static readonly Dictionary<string, Key> TouchesDefaut = ConstruireTouchesDefaut();
+
+	// Defauts des touches remappables : J1 + pause definis ici, J2-J4 repris de
+	// PartieConfig (source unique pour les actions clavier des joueurs).
+	private static Dictionary<string, Key> ConstruireTouchesDefaut()
 	{
-		{ "ui_left", Key.Left },
-		{ "ui_right", Key.Right },
-		{ "lancer_balle", Key.Space },
-		{ "ui_cancel", Key.Escape },
-	};
+		var touches = new Dictionary<string, Key>
+		{
+			{ "ui_left", Key.Left },
+			{ "ui_right", Key.Right },
+			{ "lancer_balle", Key.Space },
+			{ "tirer_capacite", Key.Alt },
+			{ "ui_cancel", Key.Escape },
+		};
+
+		foreach ((string action, Key touche) in PartieConfig.ToucheParDefaut())
+			touches[action] = touche;
+
+		return touches;
+	}
 
 	public static void Charger()
 	{
@@ -79,9 +93,20 @@ public static class SettingsManager
 		CreerBusAudioSiBesoin();
 
 		DisplayServer.WindowSetVsyncMode(VSync ? DisplayServer.VSyncMode.Enabled : DisplayServer.VSyncMode.Disabled);
-		DisplayServer.WindowSetMode(PleinEcran ? DisplayServer.WindowMode.Fullscreen : DisplayServer.WindowMode.Windowed);
-		if (!PleinEcran && LireResolution(Resolution, out Vector2I taille))
-			DisplayServer.WindowSetSize(taille);
+
+		if (PleinEcran)
+		{
+			DisplayServer.WindowSetMode(DisplayServer.WindowMode.Fullscreen);
+		}
+		else if (DisplayServer.WindowGetMode() != DisplayServer.WindowMode.Maximized)
+		{
+			// Mode fenetre : on ne force la taille que si l'utilisateur n'a pas
+			// maximise la fenetre lui-meme (sinon chaque changement de scene la
+			// reduirait a la resolution enregistree).
+			DisplayServer.WindowSetMode(DisplayServer.WindowMode.Windowed);
+			if (LireResolution(Resolution, out Vector2I taille))
+				DisplayServer.WindowSetSize(taille);
+		}
 
 		ReglerBus("Master", VolumeMasterDb);
 		ReglerBus("SFX", VolumeSfxDb);
@@ -177,16 +202,24 @@ public static class SettingsManager
 
 	private static void AjouterEntreesFixes()
 	{
-		if (!InputMap.HasAction(ActionLancer))
-			InputMap.AddAction(ActionLancer);
+		// Bindings souris fixes (non remappables) : clic gauche = lancer la balle,
+		// clic droit = capacite/tir. Le clavier de ces actions reste remappable.
+		AjouterBoutonSouris(ActionLancer, MouseButton.Left);
+		AjouterBoutonSouris(ActionCapacite, MouseButton.Right);
+	}
 
-		foreach (InputEvent ev in InputMap.ActionGetEvents(ActionLancer))
-			if (ev is InputEventMouseButton souris && souris.ButtonIndex == MouseButton.Left)
+	private static void AjouterBoutonSouris(string action, MouseButton bouton)
+	{
+		if (!InputMap.HasAction(action))
+			InputMap.AddAction(action);
+
+		foreach (InputEvent ev in InputMap.ActionGetEvents(action))
+			if (ev is InputEventMouseButton souris && souris.ButtonIndex == bouton)
 				return;
 
-		InputMap.ActionAddEvent(ActionLancer, new InputEventMouseButton
+		InputMap.ActionAddEvent(action, new InputEventMouseButton
 		{
-			ButtonIndex = MouseButton.Left,
+			ButtonIndex = bouton,
 		});
 	}
 
