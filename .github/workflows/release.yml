@@ -1,0 +1,81 @@
+name: Build & Release Windows
+
+# Se déclenche à chaque push d'un tag de version (ex. v0.3.0, v1.0.0).
+on:
+  push:
+    tags:
+      - "v*"
+
+# Nécessaire pour que le workflow puisse créer / éditer la Release et y joindre l'archive.
+permissions:
+  contents: write
+
+env:
+  # --- Version de Godot utilisée pour l'export (doit correspondre à project.godot) ---
+  GODOT_VERSION: "4.6.3"
+  GODOT_STATUS: "stable"
+  # Nom exact du preset dans export_presets.cfg
+  EXPORT_PRESET: "Windows Desktop"
+  EXPORT_OUTPUT: "Build/FTLM.exe"
+
+jobs:
+  build-windows:
+    name: Export Windows x86_64
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Installer .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Télécharger Godot ${{ env.GODOT_VERSION }}-${{ env.GODOT_STATUS }} (mono) + templates
+        run: |
+          set -euo pipefail
+          VER="${GODOT_VERSION}-${GODOT_STATUS}"
+          BASE="https://github.com/godotengine/godot-builds/releases/download/${VER}"
+
+          # --- Éditeur headless mono (Linux) ---
+          curl -fL -o godot.zip "${BASE}/Godot_v${VER}_mono_linux_x86_64.zip"
+          unzip -q godot.zip
+          mv "Godot_v${VER}_mono_linux_x86_64" godot-dir
+          mv "godot-dir/Godot_v${VER}_mono_linux_x86_64" /usr/local/bin/godot
+          chmod +x /usr/local/bin/godot
+
+          # --- Templates d'export ---
+          curl -fL -o templates.tpz "${BASE}/Godot_v${VER}_mono_export_templates.tpz"
+          unzip -q templates.tpz
+          TEMPLATE_DIR="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.${GODOT_STATUS}.mono"
+          mkdir -p "${TEMPLATE_DIR}"
+          mv templates/* "${TEMPLATE_DIR}/"
+
+      - name: Importer les ressources
+        run: |
+          set -euo pipefail
+          # Premier import : génère le dossier .godot (peut "échouer" silencieusement, d'où le || true)
+          godot --headless --path . --import || true
+          godot --headless --path . --import
+
+      - name: Exporter le build release
+        run: |
+          set -euo pipefail
+          mkdir -p Build
+          godot --headless --path . --export-release "${EXPORT_PRESET}" "${EXPORT_OUTPUT}"
+          ls -la Build
+
+      - name: Zipper le build
+        run: |
+          set -euo pipefail
+          cd Build
+          zip -r "../FTLM-${GITHUB_REF_NAME}-windows-x86_64.zip" .
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+
+      - name: Publier l'archive sur la Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: FTLM-${{ github.ref_name }}-windows-x86_64.zip
+          # Crée la release si elle n'existe pas encore pour ce tag.
+          fail_on_unmatched_files: true
