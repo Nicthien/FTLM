@@ -38,11 +38,13 @@ jobs:
           BASE="https://github.com/godotengine/godot-builds/releases/download/${VER}"
 
           # --- Éditeur headless mono (Linux) ---
+          # Le binaire doit rester à côté de son dossier GodotSharp/ : on garde
+          # tout le dossier extrait et on localise l'exécutable (*.x86_64).
           curl -fL -o godot.zip "${BASE}/Godot_v${VER}_mono_linux_x86_64.zip"
-          unzip -q godot.zip
-          mv "Godot_v${VER}_mono_linux_x86_64" godot-dir
-          mv "godot-dir/Godot_v${VER}_mono_linux_x86_64" /usr/local/bin/godot
-          chmod +x /usr/local/bin/godot
+          unzip -q godot.zip -d godot-extract
+          GODOT_BIN="$(find "$PWD/godot-extract" -type f -name '*.x86_64' | head -n1)"
+          chmod +x "${GODOT_BIN}"
+          echo "GODOT_BIN=${GODOT_BIN}" >> "$GITHUB_ENV"
 
           # --- Templates d'export ---
           curl -fL -o templates.tpz "${BASE}/Godot_v${VER}_mono_export_templates.tpz"
@@ -55,14 +57,14 @@ jobs:
         run: |
           set -euo pipefail
           # Premier import : génère le dossier .godot (peut "échouer" silencieusement, d'où le || true)
-          godot --headless --path . --import || true
-          godot --headless --path . --import
+          "$GODOT_BIN" --headless --path . --import || true
+          "$GODOT_BIN" --headless --path . --import
 
       - name: Exporter le build release
         run: |
           set -euo pipefail
           mkdir -p Build
-          godot --headless --path . --export-release "${EXPORT_PRESET}" "${EXPORT_OUTPUT}"
+          "$GODOT_BIN" --headless --path . --export-release "${EXPORT_PRESET}" "${EXPORT_OUTPUT}"
           ls -la Build
 
       - name: Zipper le build
