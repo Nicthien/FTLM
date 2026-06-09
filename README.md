@@ -73,8 +73,9 @@ Les builds Windows sont publiés dans la section **[Releases](../../releases)**.
 
 ## 📄 Licence
 
-Licence **propriétaire** — « Tous droits réservés ». Le code source et les ressources
-(graphismes, sons, scènes, niveaux) sont protégés. Voir [LICENSE](LICENSE).
+Licence **MIT** — libre d'utilisation, de modification et de redistribution. Voir [LICENSE](LICENSE).
+
+💖 Tu apprécies le projet ? Tu peux le soutenir sur [Ko-fi](https://ko-fi.com/nthstudio).
 
 ---
 
@@ -156,7 +157,8 @@ Windows builds are published in the **[Releases](../../releases)** section.
 
 ### 📄 License
 
-**Proprietary** license — "All rights reserved". The source code and assets
-(graphics, sounds, scenes, levels) are protected. See [LICENSE](LICENSE).
+**MIT** license — free to use, modify and redistribute. See [LICENSE](LICENSE).
+
+💖 Enjoying the project? You can support it on [Ko-fi](https://ko-fi.com/nthstudio).
 </content>
 </invoke>
