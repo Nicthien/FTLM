@@ -26,6 +26,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Injecter la version depuis le tag
+        run: |
+          set -euo pipefail
+          # Tag "v0.4.0" -> version "0.4.0" affichee en jeu (coin du menu).
+          VERSION="${GITHUB_REF_NAME#v}"
+          sed -i "s|^config/version=.*|config/version=\"${VERSION}\"|" project.godot
+          grep '^config/version=' project.godot
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+
       - name: Installer .NET 8
         uses: actions/setup-dotnet@v4
         with:

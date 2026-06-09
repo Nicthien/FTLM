@@ -83,3 +83,9 @@ Windows builds are published in the **[Releases](../../releases)** section.
 ## 📄 License
 
 **MIT** license — free to use, modify and redistribute. See [LICENSE](LICENSE).
+
+## 🏢 Studio
+
+<a href="https://nthstudio.eu"><img src="logo_nthstudio.png" alt="NTH Studio" width="120" /></a>
+
+Developed by **[NTH Studio](https://nthstudio.eu)**.

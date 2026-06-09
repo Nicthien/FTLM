@@ -5,6 +5,7 @@ public partial class MainMenu : Control
 {
 	private OptionsMenu _options;
 	private PanelContainer _menuPanel;
+	private HBoxContainer _piedStudio;
 	private PanelContainer _selectionPanel;
 	private readonly Button[] _boutonsNombre = new Button[3];
 	private readonly HBoxContainer[] _lignesJoueur = new HBoxContainer[PartieConfig.MaxJoueurs];
@@ -67,6 +68,8 @@ public partial class MainMenu : Control
 		ConstruireSelection();
 		ConstruireReseauPanel();
 		ConstruireJoinPanel();
+		ConstruirePiedStudio();
+		ConstruireVersion();
 		BrancherSignauxReseau();
 
 		// Lancement direct d'une nouvelle partie sans passer par le menu (pratique pour les tests) :
@@ -151,6 +154,11 @@ public partial class MainMenu : Control
 
 	public override void _Process(double delta)
 	{
+		// Le pied de page (studio / Ko-fi) ne s'affiche que sur l'ecran principal,
+		// pour ne pas deborder par-dessus les Options ou les sous-panneaux.
+		if (_piedStudio != null)
+			_piedStudio.Visible = (_menuPanel?.Visible ?? false) && !(_options?.Visible ?? false);
+
 		if (NetworkSession.Instance is not NetworkSession session)
 			return;
 
@@ -406,6 +414,91 @@ public partial class MainMenu : Control
 		var connecter = new Button { Text = "Connecter", CustomMinimumSize = new Vector2(160.0f, 44.0f) };
 		connecter.Pressed += Rejoindre;
 		actions.AddChild(connecter);
+	}
+
+	// Numero de version (lu depuis project.godot -> application/config/version),
+	// affiche discretement dans le coin bas-droit du menu. La CI injecte le tag a la release.
+	private void ConstruireVersion()
+	{
+		string version = ProjectSettings.GetSetting("application/config/version", "").AsString();
+		if (string.IsNullOrWhiteSpace(version))
+			return;
+
+		var label = new Label
+		{
+			Name = "Version",
+			Text = "v" + version,
+			MouseFilter = MouseFilterEnum.Ignore,
+			HorizontalAlignment = HorizontalAlignment.Right,
+			VerticalAlignment = VerticalAlignment.Bottom,
+		};
+		label.AddThemeFontSizeOverride("font_size", 14);
+		label.Modulate = new Color(1.0f, 1.0f, 1.0f, 0.5f);
+		label.SetAnchorsPreset(LayoutPreset.BottomRight);
+		label.GrowHorizontal = GrowDirection.Begin;
+		label.GrowVertical = GrowDirection.Begin;
+		label.OffsetLeft = -160.0f;
+		label.OffsetTop = -34.0f;
+		label.OffsetRight = -12.0f;
+		label.OffsetBottom = -10.0f;
+		AddChild(label);
+	}
+
+	// Pied de page : logo + nom du studio (lien nthstudio.eu) et logo + lien Ko-fi.
+	// Toujours visible en bas du menu ; les clics ouvrent le navigateur via OS.ShellOpen.
+	private void ConstruirePiedStudio()
+	{
+		var pied = new HBoxContainer
+		{
+			Name = "PiedStudio",
+			Alignment = BoxContainer.AlignmentMode.Center,
+			MouseFilter = MouseFilterEnum.Ignore,
+		};
+		pied.AddThemeConstantOverride("separation", 10);
+		pied.AnchorLeft = 0.0f;
+		pied.AnchorRight = 1.0f;
+		pied.AnchorTop = 1.0f;
+		pied.AnchorBottom = 1.0f;
+		pied.OffsetLeft = 0.0f;
+		pied.OffsetRight = 0.0f;
+		pied.OffsetTop = -112.0f;
+		pied.OffsetBottom = -12.0f;
+		pied.GrowHorizontal = GrowDirection.Both;
+		pied.GrowVertical = GrowDirection.Begin;
+		AddChild(pied);
+		_piedStudio = pied;
+
+		AjouterLienAvecLogo(pied, "res://logo_nthstudio.png", "NTH Studio", "https://nthstudio.eu", 88.0f);
+		pied.AddChild(new VSeparator());
+		AjouterLienAvecLogo(pied, "res://Textures/logo_kofi.png", "Soutenir sur Ko-fi", "https://ko-fi.com/nthstudio", 36.0f);
+	}
+
+	// Ajoute un logo cliquable + un libelle cliquable ouvrant l'URL donnee.
+	private static void AjouterLienAvecLogo(Control parent, string cheminTexture, string libelle, string url, float taille)
+	{
+		if (ResourceLoader.Exists(cheminTexture) && GD.Load<Texture2D>(cheminTexture) is Texture2D texture)
+		{
+			var logo = new TextureButton
+			{
+				TextureNormal = texture,
+				IgnoreTextureSize = true,
+				StretchMode = TextureButton.StretchModeEnum.KeepAspectCentered,
+				CustomMinimumSize = new Vector2(taille, taille),
+				SizeFlagsVertical = SizeFlags.ShrinkCenter,
+				TooltipText = url,
+			};
+			logo.Pressed += () => OS.ShellOpen(url);
+			parent.AddChild(logo);
+		}
+
+		var lien = new LinkButton
+		{
+			Text = libelle,
+			TooltipText = url,
+			SizeFlagsVertical = SizeFlags.ShrinkCenter,
+		};
+		lien.Pressed += () => OS.ShellOpen(url);
+		parent.AddChild(lien);
 	}
 
 	private PanelContainer CreerPanneauCentre(string nom)
